@@ -1,6 +1,6 @@
 import numpy as np
 import math
-#import pyglet
+import pyglet
 from numpy.core.numeric import array_equal
 from numpy.core.records import array
 import scipy.optimize  
@@ -43,12 +43,12 @@ class arm_segment:
         target_vector[0] = target[0] - self.mount_position[0]
         target_vector[1] = target[1] - self.mount_position[1]
         target_vector[2] = 0.0
-        print(target_vector)
+        print("target_vector:", target_vector)
         current_vector = np.array([0.0,0.0,0.0])
         current_vector[0] = self.end_position[0] - self.mount_position[0]
         current_vector[1] = self.end_position[1] - self.mount_position[1]
         current_vector[2] = self.end_position[2] - self.mount_position[2]
-        print(current_vector)
+        print("current_vector:", current_vector)
         #print("target vector{1}, current_vector {2}".format(target_vector, current_vector))
 
         # step 2: calculate nomalized dot
@@ -68,10 +68,11 @@ class arm_segment:
                 turnDeg = math.degrees(turnAngle)
                 self.angle += turnDeg
                 
-        print("dot: {0}, cross {1}".format(dot, cross))
+        print("dot: {0}, cross {1}\n".format(dot, cross))
 
         # update angle based on dot watch constraints
         #self.angle = dot
+
 
 class robot_arm:
     def __init__(self) -> None:
@@ -97,8 +98,8 @@ class robot_arm:
             #self.Ycoords = np.append(self.Ycoords, self.end_position[1])
 
     def move_to(self,pos):
-        maximum_loopcount = 1
-        print("pos {0}, end_position {1}". format(pos, self.end_position))
+        maximum_loopcount = 20
+        print("pos {0}, end_position {1}\n".format(pos, self.end_position))
         while  np.array_equal(pos,self.end_position) == False:
             for seg in reversed(self.segments):
                 seg.rotate_to(pos)
@@ -111,6 +112,12 @@ class robot_arm:
             s.coords()
             s.print()
         print('End angle: {0}'.format(self.end_angle))
+
+    def draw_coords(self):
+        for s in self.segments:
+            Xcoords = np.array([0.0])
+            Xcoords = np.append(Xcoords, self.end_position[0])
+            return Xcoords
         
 arm = robot_arm()
 
@@ -123,10 +130,8 @@ arm.print()
 #print(arm.move_to([200.0, 100.0]))
 
 arm.move_to(np.array([50.0, 140.0, 0.0]))
-print("new")
-#arm.print()
-
-
+print("new\n")
+arm.print()
 
 
 
