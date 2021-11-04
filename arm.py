@@ -1,15 +1,15 @@
 import numpy as np
 import math
-import pyglet
+#import pyglet
 from numpy.core.numeric import array_equal
 from numpy.core.records import array
 import scipy.optimize  
 
 class arm_segment:
     # TODO: Note to self choose array orientation wisely
-    def __init__(self,len) -> None:
+    def __init__(self,len,angle) -> None:
         self.length = len
-        self.angle = math.pi / 4 # test 45 degree angle
+        self.angle = math.radians(angle) #math.pi / 4 # test 45 degree angle
         self.mount_position = np.array([0.0, 0.0, 0.0])
         self.mount_angle = 0.0
         self.end_position = np.array([0.0, 0.0, 0.0])
@@ -36,17 +36,20 @@ class arm_segment:
         return self.mount_angle + self.angle
 
     def rotate_to(self,target):
+        print("target",target)
         # TODO:
         # step 1: move vectors to origin
         target_vector = np.array([0.0,0.0,0.0])
         target_vector[0] = target[0] - self.mount_position[0]
         target_vector[1] = target[1] - self.mount_position[1]
-        target_vector[2] = target[2] - self.mount_position[2]
-
+        target_vector[2] = 0.0
+        print(target_vector)
         current_vector = np.array([0.0,0.0,0.0])
         current_vector[0] = self.end_position[0] - self.mount_position[0]
         current_vector[1] = self.end_position[1] - self.mount_position[1]
         current_vector[2] = self.end_position[2] - self.mount_position[2]
+        print(current_vector)
+        #print("target vector{1}, current_vector {2}".format(target_vector, current_vector))
 
         # step 2: calculate nomalized dot
         normalized_target = target_vector / np.sqrt(np.sum(target_vector**2))
@@ -54,8 +57,17 @@ class arm_segment:
         dot = np.dot(normalized_current, normalized_target)
 
         # step 3: calc cross for direction
-        cross = np.cross(normalized_current, normalized_target)
-
+        if dot < 1:
+            cross = np.cross(normalized_current, normalized_target)
+            if cross[2] > 0.0:
+                turnAngle = math.acos(dot)
+                turnDeg = math.degrees(turnAngle)
+                self.angle -= turnDeg
+            elif cross[2] < 0.0:
+                turnAngle = math.acos(dot)
+                turnDeg = math.degrees(turnAngle)
+                self.angle += turnDeg
+                
         print("dot: {0}, cross {1}".format(dot, cross))
 
         # update angle based on dot watch constraints
@@ -67,8 +79,8 @@ class robot_arm:
         # third dimension for cross product.
         self.end_position = np.array([0.0, 0.0, 0.0])
         self.segments = []
-        self.Xcoords = np.array([0.0])
-        self.Ycoords = np.array([0.0])
+        #self.Xcoords = np.array([0.0])
+        #self.Ycoords = np.array([0.0])
     
     def add_segment(self,arm_segment):
         self.segments.append(arm_segment)
@@ -81,12 +93,12 @@ class robot_arm:
             s.calc_endpoint()
             self.end_position = s.get_endpoint()
             self.end_angle = s.get_combined_angle()
-            self.Xcoords = np.append(self.Xcoords, self.end_position[0])
-            self.Ycoords = np.append(self.Ycoords, self.end_position[1])
+            #self.Xcoords = np.append(self.Xcoords, self.end_position[0])
+            #self.Ycoords = np.append(self.Ycoords, self.end_position[1])
 
     def move_to(self,pos):
-        maximum_loopcount = 20
-        #print("pos {0}, end_position {1}". format(pos, self.end_position))
+        maximum_loopcount = 1
+        print("pos {0}, end_position {1}". format(pos, self.end_position))
         while  np.array_equal(pos,self.end_position) == False:
             for seg in reversed(self.segments):
                 seg.rotate_to(pos)
@@ -102,42 +114,74 @@ class robot_arm:
         
 arm = robot_arm()
 
-arm.add_segment(arm_segment(100))
-arm.add_segment(arm_segment(150))
-arm.add_segment(arm_segment(80))
+arm.add_segment(arm_segment(100, 45))
+arm.add_segment(arm_segment(150, -60))
+arm.add_segment(arm_segment(80, -20))
 
 arm.print()
 #print(arm.end_position[0], arm.end_position[1])
 #print(arm.move_to([200.0, 100.0]))
 
+arm.move_to(np.array([50.0, 140.0, 0.0]))
+print("new")
 #arm.print()
-"""A function for plotting an arm, and having it calculate the 
-inverse kinematics such that given the mouse (x, y) position it 
-finds the appropriate joint angles to reach that point."""
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#"""A function for plotting an arm, and having it calculate the 
+#inverse kinematics such that given the mouse (x, y) position it 
+#finds the appropriate joint angles to reach that point."""
 
 # make our window for drawing
-window = pyglet.window.Window()
+#window = pyglet.window.Window()
 
-label = pyglet.text.Label('Mouse (x,y)', font_name='Times New Roman', 
-    font_size=36, x=window.width//2, y=window.height//2,
-    anchor_x='center', anchor_y='center')
+#label = pyglet.text.Label('Mouse (x,y)', font_name='Times New Roman', 
+#    font_size=36, x=window.width//2, y=window.height//2,
+#    anchor_x='center', anchor_y='center')
 
-def get_joint_positions():
-    """This method finds the (x,y) coordinates of each joint"""
+#def get_joint_positions():
+#    """This method finds the (x,y) coordinates of each joint"""
 
-    x = np.array([ 0, 
-        arm.L[0]*np.cos(arm.q[0]),
-        arm.L[0]*np.cos(arm.q[0]) + arm.L[1]*np.cos(arm.q[0]+arm.q[1]),
-        arm.L[0]*np.cos(arm.q[0]) + arm.L[1]*np.cos(arm.q[0]+arm.q[1]) +
-            arm.L[2]*np.cos(np.sum(arm.q)) ]) + window.width/2
+#    x = np.array([ 0, 
+#        arm.L[0]*np.cos(arm.q[0]),
+#        arm.L[0]*np.cos(arm.q[0]) + arm.L[1]*np.cos(arm.q[0]+arm.q[1]),
+#        arm.L[0]*np.cos(arm.q[0]) + arm.L[1]*np.cos(arm.q[0]+arm.q[1]) +
+#            arm.L[2]*np.cos(np.sum(arm.q)) ]) + window.width/2
 
-    y = np.array([ 0, 
-        arm.L[0]*np.sin(arm.q[0]),
-        arm.L[0]*np.sin(arm.q[0]) + arm.L[1]*np.sin(arm.q[0]+arm.q[1]),
-        arm.L[0]*np.sin(arm.q[0]) + arm.L[1]*np.sin(arm.q[0]+arm.q[1]) +
-            arm.L[2]*np.sin(np.sum(arm.q)) ])
+#    y = np.array([ 0, 
+#        arm.L[0]*np.sin(arm.q[0]),
+#        arm.L[0]*np.sin(arm.q[0]) + arm.L[1]*np.sin(arm.q[0]+arm.q[1]),
+#        arm.L[0]*np.sin(arm.q[0]) + arm.L[1]*np.sin(arm.q[0]+arm.q[1]) +
+#            arm.L[2]*np.sin(np.sum(arm.q)) ])
 
-    return np.array([x, y]).astype('int')
+#    return np.array([x, y]).astype('int')
     
 #window.jps = get_joint_positions()
 #window.jps = np.array([0+ window.width/2, 0, arm.end_position[0]+ window.width/2, arm.end_position[1]]).astype('int')
@@ -146,31 +190,31 @@ def get_joint_positions():
 #print(window.jps)
 #print(len(arm.Xcoords))
 
-@window.event
-def on_draw():
-    arm.Xcoords = arm.Xcoords + window.width/2
-    window.jps = np.array([arm.Xcoords, arm.Ycoords]).astype('int')
-    window.clear()
-    label.draw()
-    for i in range(len(arm.Xcoords)-1): 
-        pyglet.graphics.draw(2, pyglet.gl.GL_LINES, ('v2i', 
-            (window.jps[0][i], window.jps[1][i], 
-                window.jps[0][i+1], window.jps[1][i+1])
-            ))
+#@window.event
+#def on_draw():
+#    arm.Xcoords = arm.Xcoords + window.width/2
+#    window.jps = np.array([arm.Xcoords, arm.Ycoords]).astype('int')
+#    window.clear()
+#    label.draw()
+#    for i in range(len(arm.Xcoords)-1): 
+#        pyglet.graphics.draw(2, pyglet.gl.GL_LINES, ('v2i', 
+#            (window.jps[0][i], window.jps[1][i], 
+#                window.jps[0][i+1], window.jps[1][i+1])
+#            ))
 
-@window.event
-def on_mouse_motion(x, y, dx, dy):
+#@window.event
+#def on_mouse_motion(x, y, dx, dy):
     # call the inverse kinematics function of the arm
     # to find the joint angles optimal for pointing at 
     # this position of the mouse 
-    label.text = '(x,y) = (%.3f, %.3f)'%(x,y)
+#    label.text = '(x,y) = (%.3f, %.3f)'%(x,y)
     #print("Coords:",x,y)
     #pos = [x,y]
     #arm.move_to(pos)
     #arm.q = arm.inv_kin([x - window.width/2, y]) # get new arm angles
-    xy = np.array([x - window.width/2, y, 0.0])
+#    xy = np.array([x - window.width/2, y, 0.0])
     #print(xy)
 
-    arm.move_to(xy) # get new joint (x,y) positions
+#    arm.move_to(xy) # get new joint (x,y) positions
 
-pyglet.app.run()
+#pyglet.app.run()
